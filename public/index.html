@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Employees - Ziyan Studio</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+<style>
+@font-face{font-family:'ArkPixel';src:url('/fonts/ark-pixel-12px-proportional-zh_cn.ttf.woff2') format('woff2');font-weight:normal;font-style:normal;font-display:swap}
+@font-face{font-family:'ArkPixel';src:url('/fonts/ark-pixel-12px-proportional-latin.ttf.woff2') format('woff2');font-weight:normal;font-style:normal;font-display:swap;unicode-range:U+0000-00FF}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--gold:#ffd700;--gold-l:#ffd700;--gold-d:#B8860B;--purple:#64477d;--navy:#1a1a2e;--navy-light:#2a2a45;--panel-w:400px}
+body{font-family:'ArkPixel','Courier New',monospace;background:var(--navy);color:#e6edf3;height:100vh;overflow:hidden;image-rendering:pixelated}
+
+/* === ROOM — Star-Office-UI dark navy background === */
+.room{position:relative;width:100%;height:100vh;overflow:hidden;
+  background:radial-gradient(ellipse at center,var(--navy-light) 0%,var(--navy) 65%,#151522 100%);
+  transition:width .35s cubic-bezier(.4,0,.2,1);image-rendering:pixelated}
+.room.panel-open{width:calc(100% - var(--panel-w))}
+
+/* Subtle ambient vignette */
+.room-vignette{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,.35) 100%);z-index:2;pointer-events:none}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes dust{0%{opacity:0;transform:translate(0,0)}30%{opacity:.4}100%{opacity:0;transform:translate(25px,-70px)}}
+
+/* Floating particles (warm gold) */
+.dust-p{position:absolute;width:3px;height:3px;background:var(--gold);border-radius:50%;opacity:0;animation:dust 8s ease-in-out infinite;pointer-events:none;z-index:3;box-shadow:0 0 4px rgba(255,215,0,.3)}
+
+/* === HEADER BAR (Star-Office-UI Style) === */
+.header-bar{position:fixed;top:0;left:0;right:0;z-index:50;height:48px;background:rgba(26,26,46,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;padding:0 24px;border-bottom:2px solid var(--purple)}
+.header-logo{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.header-logo-icon{width:28px;height:28px;background:radial-gradient(circle,#e94560,#c73e54);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 0 10px rgba(233,69,96,.3)}
+.header-logo-text{font-family:'ArkPixel','Courier New',monospace;font-size:16px;color:var(--gold);letter-spacing:2px;text-shadow:0 0 8px rgba(255,215,0,.2)}
+.header-nav{display:flex;align-items:center;gap:6px;margin-left:auto;margin-right:auto;flex:1;justify-content:center}
+.header-nav-item{padding:5px 10px;font-family:'ArkPixel','Courier New',monospace;font-size:11px;color:rgba(230,237,243,.5);cursor:pointer;letter-spacing:1px;transition:all .3s;position:relative;border-radius:3px;white-space:nowrap}
+.header-nav-item:hover{color:#e6edf3;background:rgba(233,69,96,.12)}
+.header-nav-item.active{color:var(--gold);background:rgba(255,215,0,.08)}
+.header-nav-item.active::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:16px;height:2px;background:#e94560;border-radius:1px;box-shadow:0 0 6px #e94560}
+.header-sep{width:1px;height:20px;background:rgba(100,71,125,.4);margin:0 6px}
+.header-status{display:flex;align-items:center;gap:5px;padding:3px 10px;border-radius:3px;border:1px solid var(--purple);background:rgba(100,71,125,.12);font-size:10px;color:#aaa;font-family:'ArkPixel','Courier New',monospace}
+.header-status-dot{width:6px;height:6px;border-radius:50%;background:#3fb950;box-shadow:0 0 6px rgba(63,185,80,.5)}
+
+/* === BOTTOM BAR (Star-Office-UI Style) === */
+.bottom-bar{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(26,26,46,.9);border:2px solid var(--purple);border-radius:6px;padding:6px 16px;display:flex;align-items:center;gap:10px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.bb-item{position:relative;width:42px;height:42px;border-radius:4px;border:2px solid rgba(100,71,125,.4);background:rgba(42,42,69,.5);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;transition:all .2s;user-select:none}
+.bb-item:hover{border-color:#e94560;background:rgba(233,69,96,.12);transform:translateY(-3px);box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.bb-item.active{border-color:var(--gold);background:rgba(255,215,0,.1);box-shadow:0 0 12px rgba(255,215,0,.2)}
+.bb-dot{position:absolute;bottom:1px;right:1px;width:7px;height:7px;border-radius:50%;background:#555;border:1.5px solid rgba(26,26,46,.8);transition:all .3s}
+.bb-dot.running{background:#3fb950;box-shadow:0 0 6px rgba(63,185,80,.6)}
+.bb-dot.connecting{background:#d29922;animation:pulse 1s infinite}
+.bb-name{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--gold);white-space:nowrap;opacity:0;transition:opacity .2s;font-family:'ArkPixel','Courier New',monospace;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.bb-item:hover .bb-name,.bb-item.active .bb-name{opacity:1}
+
+/* === RIGHT TERMINAL PANEL (Star-Office-UI Style) === */
+.term-panel{position:fixed;right:0;top:48px;height:calc(100vh - 48px);width:0;z-index:25;background:rgba(20,23,34,.96);border-left:3px solid var(--purple);overflow:hidden;transition:width .35s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:-6px 0 24px rgba(0,0,0,.5)}
+.term-panel.open{width:var(--panel-w)}
+.term-panel.dragging,.term-panel.dragging *{transition:none!important}
+.term-panel::before{content:'';position:absolute;left:0;top:10%;bottom:10%;width:1px;background:linear-gradient(180deg,transparent,rgba(100,71,125,.4),transparent);z-index:1}
+/* Resize drag handle */
+.tp-resize{position:absolute;left:-4px;top:0;bottom:0;width:8px;cursor:col-resize;z-index:30}
+.tp-resize::after{content:'';position:absolute;left:3px;top:50%;transform:translateY(-50%);width:3px;height:40px;border-radius:2px;background:rgba(100,71,125,.5);transition:background .2s}
+.tp-resize:hover::after,.tp-resize:active::after{background:var(--gold);box-shadow:0 0 8px rgba(255,215,0,.4)}
+.tp-header{padding:6px 12px;border-bottom:1px solid var(--purple);display:flex;align-items:center;gap:8px;flex-shrink:0;background:rgba(26,26,46,.6)}
+.tp-avatar{width:34px;height:34px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid var(--purple);background:rgba(100,71,125,.15)}
+.tp-info{flex:1}
+.tp-name{font-size:13px;font-weight:600;color:var(--gold);font-family:'ArkPixel','Courier New',monospace}
+.tp-status{display:flex;align-items:center;gap:4px;font-size:10px;color:#888;font-family:'ArkPixel','Courier New',monospace}
+.tp-dot{width:6px;height:6px;border-radius:50%;background:#555;transition:all .3s}
+.tp-dot.running{background:#3fb950;box-shadow:0 0 6px rgba(63,185,80,.5)}
+.tp-dot.connecting{background:#d29922;animation:pulse 1s infinite}
+.tp-manage{padding:3px 10px;border-radius:3px;border:1px solid var(--purple);background:rgba(100,71,125,.12);color:#ccc;font-size:10px;cursor:pointer;font-family:'ArkPixel','Courier New',monospace;transition:all .15s}
+.tp-manage:hover{background:rgba(233,69,96,.15);border-color:#e94560;color:#eee}
+.tp-close{width:26px;height:26px;border-radius:3px;border:1px solid rgba(100,71,125,.3);background:none;color:#e94560;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.tp-close:hover{background:rgba(233,69,96,.15)}
+.tp-body{flex:1;position:relative;overflow:hidden;min-height:0}
+.tp-term{position:absolute;inset:0;display:none;padding:6px}
+.tp-term.active{display:flex;flex-direction:column}
+.tp-term .xterm{flex:1}
+.tp-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#484f58;gap:10px;font-size:13px}
+.tp-placeholder.hidden{display:none}
+.tp-conn-ov{position:absolute;inset:0;background:rgba(21,18,14,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;gap:10px}
+.tp-conn-ov.hidden{display:none}
+.spinner{width:28px;height:28px;border:3px solid #30363d;border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
+.conn-t{color:#8b949e;font-size:13px}
+.tp-actions{padding:10px 16px;border-top:2px solid var(--purple);display:flex;gap:8px;flex-shrink:0;background:rgba(26,26,46,.6)}
+.tp-btn{flex:1;padding:7px 0;border-radius:4px;border:2px solid var(--purple);background:rgba(100,71,125,.1);color:#ccc;font-size:11px;cursor:pointer;font-family:'ArkPixel','Courier New',monospace;transition:all .15s;text-align:center}
+.tp-btn:hover{background:rgba(100,71,125,.25);color:#eee}
+.tp-btn-go{border-color:#3fb950;color:#5fd068}
+.tp-btn-go:hover{background:rgba(63,185,80,.15)}
+.tp-btn-no{border-color:#e94560;color:#f07070}
+.tp-btn-no:hover{background:rgba(233,69,96,.15)}
+
+/* === MODAL (Star-Office-UI Style) === */
+.modal-bg{display:none;position:fixed;top:0;left:0;bottom:0;right:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:right .35s cubic-bezier(.4,0,.2,1)}
+.modal-bg.open{display:flex}
+.modal-bg.panel-shift{right:var(--panel-w)}
+.modal{background:rgba(26,26,46,.96);border:3px solid var(--purple);border-radius:6px;width:500px;max-width:95vw;max-height:85vh;overflow-y:auto;padding:20px;position:relative;backdrop-filter:blur(8px);box-shadow:0 8px 32px rgba(0,0,0,.6)}
+.modal-x{position:absolute;top:8px;right:8px;background:none;border:none;color:#e94560;font-size:18px;cursor:pointer;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:3px}
+.modal-x:hover{background:rgba(233,69,96,.15)}
+.m-title{font-size:15px;font-weight:700;margin-bottom:14px;color:var(--gold);font-family:'ArkPixel','Courier New',monospace}
+.m-sec{margin-bottom:12px}.m-sec-t{font-size:11px;font-weight:600;margin-bottom:6px;color:var(--gold)}
+.f-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.f-lbl{font-size:10px;color:#B8A080;min-width:50px}
+.f-row input[type=color]{width:30px;height:22px;border:1px solid var(--gold-d);border-radius:4px;background:#1E1610;cursor:pointer}
+.f-hex{font-size:9px;color:#8A7A60;font-family:monospace}
+.expr-s{display:flex;gap:4px}
+.ex-b{padding:3px 8px;border-radius:8px;border:1px solid var(--gold-d);background:rgba(218,165,32,.06);color:var(--gold-l);font-size:9px;cursor:pointer;transition:.15s}
+.ex-b:hover{background:rgba(218,165,32,.18)}.ex-b.on{border-color:var(--gold);background:rgba(218,165,32,.22)}
+.sk-area{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.sk-tag{display:flex;align-items:center;gap:3px;padding:2px 7px;border-radius:8px;font-size:9px;border:1px solid rgba(218,165,32,.3);color:var(--gold-l);background:rgba(218,165,32,.06)}
+.sk-tag .sk-rm{cursor:pointer;opacity:.5;font-size:11px}.sk-tag .sk-rm:hover{opacity:1}
+.sk-add{display:flex;gap:4px;margin-bottom:6px}
+.sk-add input{flex:1;padding:3px 7px;border-radius:5px;border:1px solid var(--gold-d);background:rgba(218,165,32,.04);color:var(--gold-l);font-size:9px;outline:none}
+.sk-add button{padding:3px 8px;border-radius:5px;border:1px solid var(--gold-d);background:rgba(218,165,32,.08);color:var(--gold-l);font-size:9px;cursor:pointer}
+.pre-sk{display:flex;flex-wrap:wrap;gap:3px}
+.pr-s{padding:1px 5px;border-radius:4px;font-size:8px;border:1px dashed var(--gold-d);background:none;color:#8A7A60;cursor:pointer;transition:.15s}
+.pr-s:hover{background:rgba(218,165,32,.12);border-style:solid;color:var(--gold-l)}
+.sp-n{font-size:9px;color:#6A5A40;padding:5px 7px;background:rgba(218,165,32,.04);border-radius:5px;border:1px solid rgba(218,165,32,.12);line-height:1.3}
+.sv-b{width:100%;padding:7px;border-radius:10px;border:1px solid var(--gold);background:linear-gradient(135deg,rgba(218,165,32,.18),rgba(218,165,32,.08));color:var(--gold-l);font-size:12px;font-weight:600;cursor:pointer;font-family:Georgia,serif;letter-spacing:1px;transition:.15s}
+.sv-b:hover{background:linear-gradient(135deg,rgba(218,165,32,.3),rgba(218,165,32,.15))}
+
+/* Personality config */
+.pers-grid{display:flex;flex-direction:column;gap:8px}
+.pers-item{display:flex;align-items:center;gap:8px}
+.pers-item label{font-size:10px;color:#B8A080;min-width:65px}
+.pers-select{flex:1;padding:4px 6px;border-radius:5px;border:1px solid var(--gold-d);background:rgba(218,165,32,.04);color:var(--gold-l);font-size:10px;outline:none}
+.pers-select option{background:#1E1610;color:#e6edf3}
+.pers-tags{display:flex;flex-wrap:wrap;gap:4px;flex:1}
+.pers-tag{padding:2px 8px;border-radius:8px;font-size:9px;border:1px solid rgba(218,165,32,.3);color:#8A7A60;cursor:pointer;transition:.15s;user-select:none}
+.pers-tag.on{border-color:var(--gold);background:rgba(218,165,32,.22);color:var(--gold-l)}
+.pers-tag:hover{background:rgba(218,165,32,.12)}
+.pers-textarea{width:100%;min-height:50px;padding:6px 8px;border-radius:5px;border:1px solid var(--gold-d);background:rgba(218,165,32,.04);color:var(--gold-l);font-size:10px;outline:none;resize:vertical;font-family:inherit}
+
+/* CWD picker modal overlay */
+.cwd-overlay{display:none;position:fixed;top:0;left:0;bottom:0;right:0;background:rgba(0,0,0,.7);z-index:110;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:right .35s cubic-bezier(.4,0,.2,1)}
+.cwd-overlay.open{display:flex}
+.cwd-overlay.panel-shift{right:var(--panel-w)}
+.cwd-box{background:linear-gradient(135deg,#1E1610,#2A2018);border:1px solid var(--gold);border-radius:14px;width:380px;max-width:90vw;padding:22px}
+.cwd-title{font-size:14px;font-weight:700;color:var(--gold-l);font-family:Georgia,serif;margin-bottom:14px;text-align:center}
+.cwd-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.cwd-opt{padding:10px 14px;border-radius:8px;border:1px solid rgba(218,165,32,.2);background:rgba(218,165,32,.04);color:var(--gold-l);cursor:pointer;font-size:11px;transition:.15s;font-family:monospace}
+.cwd-opt:hover{background:rgba(218,165,32,.15);border-color:var(--gold)}
+.cwd-cancel{width:100%;padding:6px;border-radius:8px;border:1px solid #555;background:none;color:#8A7A60;font-size:10px;cursor:pointer;transition:.15s}
+.cwd-cancel:hover{background:rgba(255,255,255,.05)}
+
+/* Logo decorations */
+.header-logo-text::before{content:'⭐';margin-right:6px;font-size:8px}
+.header-logo-text::after{content:'⭐';margin-left:6px;font-size:8px}
+
+/* Active bottom bar item glow */
+@keyframes bbGlow{0%,100%{box-shadow:0 0 10px rgba(255,215,0,.2)}50%{box-shadow:0 0 18px rgba(255,215,0,.4)}}
+.bb-item.active{animation:bbGlow 2s ease-in-out infinite}
+
+/* === HISTORY PANEL === */
+.history-panel{position:absolute;inset:0;background:rgba(13,17,23,.97);z-index:20;display:none;flex-direction:column}
+.history-panel.open{display:flex}
+.history-header{padding:12px 16px;border-bottom:1px solid rgba(218,165,32,.15);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.history-title{font-size:13px;font-weight:600;color:var(--gold-l);font-family:Georgia,serif;flex:1}
+.history-close{width:24px;height:24px;border-radius:50%;border:1px solid rgba(218,165,32,.2);background:none;color:var(--gold);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.history-close:hover{background:rgba(218,165,32,.2)}
+.history-list{padding:8px;display:flex;flex-direction:column;gap:4px;max-height:140px;overflow-y:auto;flex-shrink:0;border-bottom:1px solid rgba(218,165,32,.1)}
+.history-item{padding:6px 10px;border-radius:6px;border:1px solid rgba(218,165,32,.12);background:rgba(218,165,32,.04);color:var(--gold-l);font-size:11px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:monospace;transition:.15s}
+.history-item:hover{background:rgba(218,165,32,.12);border-color:var(--gold)}
+.history-item.active{background:rgba(218,165,32,.18);border-color:var(--gold)}
+.history-item-size{font-size:9px;color:#8A7A60}
+.history-body{flex:1;min-height:0;padding:4px}
+.history-empty{display:flex;align-items:center;justify-content:center;height:100%;color:#484f58;font-size:12px}
+.history-search{display:none;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid rgba(218,165,32,.12);background:rgba(218,165,32,.05)}
+.history-search.open{display:flex}
+.history-search input{flex:1;background:rgba(13,17,23,.8);border:1px solid rgba(218,165,32,.3);border-radius:4px;padding:4px 8px;color:var(--gold-l);font-size:12px;font-family:monospace;outline:none}
+.history-search input:focus{border-color:var(--gold)}
+.history-search input::placeholder{color:#5a5040}
+.history-search .hs-info{font-size:10px;color:#8A7A60;min-width:30px;text-align:center}
+.history-search button{width:24px;height:24px;border-radius:4px;border:1px solid rgba(218,165,32,.2);background:none;color:var(--gold);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.history-search button:hover{background:rgba(218,165,32,.2)}
+
+/* Resume status indicator */
+.resume-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:6px;vertical-align:middle}
+.resume-dot.has-resume{background:#3fb950;box-shadow:0 0 6px rgba(63,185,80,.5)}
+.resume-dot.no-resume{background:#555}
+
+/* History button in header & actions */
+.tp-btn-hist{border-color:var(--gold-d);color:var(--gold-l)}
+.tp-btn-hist:hover{background:rgba(218,165,32,.2)}
+
+/* Bottom bar separator */
+.bb-sep{width:1px;height:28px;background:rgba(100,71,125,.4);margin:0 2px}
+
+/* Toast notification */
+.toast{position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:200;background:rgba(26,26,46,.95);border:2px solid #e94560;border-radius:4px;padding:8px 18px;color:#eee;font-size:12px;font-family:'ArkPixel','Courier New',monospace;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.toast.show{opacity:1}
+
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:rgba(17,17,17,.5)}::-webkit-scrollbar-thumb{background:rgba(218,165,32,.3);border-radius:3px}::-webkit-scrollbar-thumb:hover{background:rgba(218,165,32,.5)}
+
+/* === OFFICE — Star-Office-UI Style Layout === */
+.office{position:absolute;top:0;left:0;right:0;bottom:0;z-index:4;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 10px 64px;overflow:hidden}
+
+/* Office container: two rows of rooms with corridor between */
+.office-building{pointer-events:auto;display:flex;flex-direction:column;width:100%;max-width:1600px;flex:1;min-height:0;
+  border:4px solid var(--purple);border-radius:4px;box-shadow:inset 0 0 0 2px rgba(100,71,125,.3),0 0 40px rgba(100,71,125,.2);overflow:hidden}
+
+/* Each row of rooms */
+.room-row{display:flex;flex:1;min-height:0}
+
+/* === CORRIDOR between rows === */
+.corridor{height:40px;min-height:40px;position:relative;
+  background:
+    repeating-conic-gradient(#c8ab88 0% 25%,#bfa07a 0% 50%) 0 0/24px 24px,
+    linear-gradient(90deg,#c4a070,#d0b090,#c4a070);
+  border-top:3px solid #8a6a48;border-bottom:3px solid #8a6a48;
+  image-rendering:pixelated;display:flex;align-items:center;justify-content:center;overflow:hidden}
+/* Corridor floor trim lines */
+.corridor::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#6a5038,#8a6a48,#6a5038)}
+.corridor::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#6a5038,#8a6a48,#6a5038)}
+/* Plants and decorations in corridor */
+.corridor-deco{display:flex;align-items:center;gap:40px;font-size:20px;filter:drop-shadow(1px 2px 3px rgba(0,0,0,.3));z-index:1}
+
+/* === Individual Room Card === */
+.room-card{position:relative;overflow:hidden;cursor:pointer;transition:all .3s;flex:1;min-width:0;
+  background:url('/img/room_ref.webp') center/cover;image-rendering:auto;min-height:180px;
+  border-right:3px solid var(--purple)}
+.room-card:last-child{border-right:none}
+.room-card:hover{z-index:2}
+.room-card:hover::before{background:rgba(20,15,30,.25)!important}
+.room-card.active{z-index:2}
+.room-card.connecting{z-index:2}
+
+/* Room dark overlay (idle = dim, active = bright like screenshot) */
+.room-card::before{content:'';position:absolute;inset:0;background:rgba(20,15,30,.45);transition:background .5s;z-index:1}
+.room-card.active::before{background:rgba(10,8,15,.08)}
+.room-card.connecting::before{background:rgba(20,18,10,.25)}
+
+/* Warm glow for active rooms */
+.room-card.active::after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:radial-gradient(ellipse at 30% 60%,rgba(255,220,120,.06),transparent 60%)}
+
+/* === DOORS between rooms (side doors) === */
+.room-door{position:absolute;z-index:6;pointer-events:none}
+.room-door.door-right{right:-10px;top:50%;transform:translateY(-50%);width:18px;height:44px}
+.room-door.door-right .door-frame{width:18px;height:44px;background:linear-gradient(180deg,#7a5838,#5a3e28);
+  border:2px solid #8a6a48;border-radius:6px 6px 0 0;position:relative}
+.room-door.door-right .door-frame::after{content:'';position:absolute;width:4px;height:4px;border-radius:50%;
+  background:#d4a050;right:3px;top:50%;box-shadow:0 0 6px rgba(212,160,80,.8)}
+/* Bottom doors (to corridor) */
+.room-door.door-bottom{bottom:-10px;left:50%;transform:translateX(-50%);width:48px;height:14px;z-index:6}
+.room-door.door-bottom .door-frame{width:48px;height:14px;background:linear-gradient(90deg,#7a5838,#6a4a30,#7a5838);
+  border:2px solid #8a6a48;border-radius:0 0 4px 4px;position:relative}
+.room-door.door-bottom .door-frame::after{content:'';position:absolute;width:4px;height:4px;border-radius:50%;
+  background:#d4a050;left:50%;top:3px;transform:translateX(-50%);box-shadow:0 0 6px rgba(212,160,80,.8)}
+/* Top doors (from corridor to bottom row) */
+.room-door.door-top{top:-10px;left:50%;transform:translateX(-50%);width:48px;height:14px;z-index:6}
+.room-door.door-top .door-frame{width:48px;height:14px;background:linear-gradient(90deg,#7a5838,#6a4a30,#7a5838);
+  border:2px solid #8a6a48;border-radius:4px 4px 0 0;position:relative}
+.room-door.door-top .door-frame::after{content:'';position:absolute;width:4px;height:4px;border-radius:50%;
+  background:#d4a050;left:50%;bottom:3px;transform:translateX(-50%);box-shadow:0 0 6px rgba(212,160,80,.8)}
+/* Door glow when active */
+.room-card.active .room-door .door-frame{box-shadow:0 0 10px rgba(212,160,80,.4)}
+
+/* === Star character (orange cat + lobster) === */
+/* star-idle-v5.png: 2048x1536, 8 cols x 6 rows, frame 256x256 */
+/* Display 90x90. Scale=90/256=0.3516. bg-size: 2048*0.3516=720, 1536*0.3516=540 */
+.room-cat{position:absolute;z-index:5;width:90px;height:90px;image-rendering:pixelated;
+  filter:drop-shadow(2px 3px 6px rgba(0,0,0,.5));transition:all .6s ease}
+.room-cat.idle{bottom:4%;right:4%;
+  background:url('/img/star-idle-v5.png') no-repeat;background-size:720px 540px;
+  animation:catIdleAnim 0.67s steps(8) infinite}
+@keyframes catIdleAnim{from{background-position:0 0}to{background-position:-720px 0}}
+.room-card.active .room-cat{filter:drop-shadow(2px 3px 12px rgba(255,215,0,.5))}
+
+/* === Star working — at desk with lobster claws === */
+/* star-working-spritesheet-grid: 2400x1500, frame 300x300, 8 cols x 5 rows */
+/* Display 90x90. Scale=90/300=0.3. bg-size: 2400*0.3=720, 1500*0.3=450 */
+/* Cat sits BEHIND the desk — desk covers lower body, head+claws visible above */
+.room-cat.at-desk{bottom:38%;left:50%;transform:translateX(-50%);width:90px;height:90px;z-index:4;
+  background:url('/img/star-working-spritesheet-grid.webp') no-repeat;background-size:720px 450px;
+  animation:catWork 0.67s steps(8) infinite}
+@keyframes catWork{from{background-position:0 0}to{background-position:-720px 0}}
+
+/* === Room furniture (pixel art sprites) === */
+.room-furniture{position:absolute;z-index:3;image-rendering:pixelated;pointer-events:none}
+/* Desk with lamp + monitor + coffee (desk-v3.webp: 276x214, display ~110x85) */
+/* Desk is IN FRONT of the cat (covers cat's lower body, like sitting at a desk) */
+.room-desk{width:120px;height:92px;bottom:28%;left:50%;transform:translateX(-50%);background:url('/img/desk-v3.webp') no-repeat center/contain;
+  filter:drop-shadow(2px 3px 4px rgba(0,0,0,.4));opacity:.85;transition:opacity .5s;z-index:7}
+.room-card.active .room-desk{opacity:1;filter:drop-shadow(2px 3px 6px rgba(255,200,80,.2))}
+/* Flower pot (flowers-bloom-v2.webp: 512x512, 4x4 grid, each 128x128, display 44x44) */
+/* Scale: 44/128=0.34375 → bg-size: 512*0.34375=176, positions: 128*0.34375=44 */
+.room-flower{width:44px;height:44px;background:url('/img/flowers-bloom-v2.webp') no-repeat;background-size:176px 176px;
+  filter:drop-shadow(1px 2px 3px rgba(0,0,0,.3))}
+.room-flower.f0{background-position:0 0}.room-flower.f1{background-position:-44px 0}
+.room-flower.f2{background-position:-88px 0}.room-flower.f3{background-position:-132px 0}
+.room-flower.f4{background-position:0 -44px}.room-flower.f5{background-position:-44px -44px}
+.room-flower.f6{background-position:-88px -44px}
+/* Sofa (sofa-idle-v3.png: 256x256, display ~70x70) */
+.room-sofa{width:70px;height:70px;bottom:6%;right:6%;background:url('/img/sofa-idle-v3.png') no-repeat center/contain;
+  filter:drop-shadow(2px 3px 4px rgba(0,0,0,.35));opacity:.8;transition:opacity .5s}
+.room-card.active .room-sofa{opacity:.6}
+/* Bookshelf (CSS-drawn pixel style) */
+.room-bookshelf{top:4%;left:50%;transform:translateX(-50%);width:32px;height:50px;
+  background:linear-gradient(180deg,#6a4a30,#5a3e28);border:2px solid #8a6848;border-radius:2px;
+  box-shadow:inset 0 16px 0 0 #7a5838,inset 0 32px 0 0 #6a4a30}
+.room-bookshelf::before{content:'';position:absolute;left:3px;right:3px;top:4px;height:12px;
+  background:repeating-linear-gradient(90deg,#c94040 0 4px,#4a7a4a 4px 8px,#4a5a8a 8px 12px,#8a6a4a 12px 15px);border-radius:1px}
+.room-bookshelf::after{content:'';position:absolute;left:3px;right:3px;top:20px;height:12px;
+  background:repeating-linear-gradient(90deg,#5a7a5a 0 5px,#8a5a5a 5px 9px,#5a5a7a 9px 14px);border-radius:1px}
+/* Wall lamp (CSS pixel) */
+.room-wall-lamp{top:8%;right:20%;width:20px;height:28px}
+.room-wall-lamp::before{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:3px;height:16px;background:#8a7a50}
+.room-wall-lamp::after{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:16px;height:12px;
+  background:radial-gradient(ellipse at bottom,#ffe8a0,#f0d060);border-radius:50% 50% 0 0;box-shadow:0 4px 12px rgba(255,220,100,.2)}
+.room-card.active .room-wall-lamp::after{box-shadow:0 4px 20px rgba(255,220,100,.4)}
+
+/* === Speech bubble — Star-Office-UI style (white bg, dark text) === */
+.room-bubble{position:absolute;z-index:10;background:rgba(255,255,255,.92);border:2px solid #000;border-radius:4px;
+  padding:3px 8px;font-size:11px;color:#000;font-family:'ArkPixel','Courier New',monospace;
+  white-space:nowrap;pointer-events:none;animation:bubbleFloat 4s ease forwards;image-rendering:auto}
+@keyframes bubbleFloat{0%{opacity:0;transform:translateY(6px)}10%{opacity:1;transform:translateY(0)}85%{opacity:1}100%{opacity:0;transform:translateY(-8px)}}
+
+/* === Room name plaque (bottom) — exact Star-Office-UI style === */
+.room-plaque{position:absolute;bottom:0;left:0;right:0;z-index:8;display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:6px 0;background:#5d4037;border:3px solid #3e2723;border-left:none;border-right:none;border-bottom:none}
+.room-plaque-star{color:var(--gold);font-size:14px;text-shadow:0 0 8px rgba(255,215,0,.6);
+  -webkit-text-stroke:1px rgba(0,0,0,.3)}
+.room-plaque-name{font-size:14px;color:var(--gold);font-family:'ArkPixel','Courier New',monospace;letter-spacing:2px;
+  text-shadow:0 0 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000}
+
+/* Status indicator dot on plaque */
+.room-dot{width:7px;height:7px;border-radius:50%;background:#555;display:inline-block;transition:all .3s}
+.room-card.active .room-dot{background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.7)}
+.room-card.connecting .room-dot{background:#f59e0b;animation:pulse 1s infinite}
+
+/* Status badge (top-right) */
+.room-status-badge{position:absolute;top:6px;right:6px;z-index:8;padding:2px 8px;border-radius:2px;
+  font-size:10px;font-family:'ArkPixel','Courier New',monospace;
+  background:rgba(0,0,0,.75);border:2px solid #555;color:#aaa;transition:all .3s}
+.room-card.active .room-status-badge{border-color:#22c55e;color:#22c55e;background:rgba(0,30,0,.85)}
+.room-card.connecting .room-status-badge{border-color:#f59e0b;color:#f59e0b;background:rgba(30,20,0,.85)}
+
+/* Provider badge (top-left, small) */
+.room-provider-badge{position:absolute;top:6px;left:6px;z-index:11;padding:1px 5px;border-radius:2px;
+  font-size:8px;font-family:'ArkPixel','Courier New',monospace;letter-spacing:0.5px;
+  background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.2);color:#888;pointer-events:none}
+.room-provider-badge.claude{border-color:rgba(217,119,60,.5);color:#d9773c}
+.room-provider-badge.copilot{border-color:rgba(59,130,246,.5);color:#3b82f6}
+.room-provider-badge.deepseek{border-color:rgba(34,211,238,.5);color:#22d3ee}
+
+/* Hover info card */
+.room-info{position:absolute;top:22px;left:6px;z-index:10;padding:4px 8px;background:rgba(0,0,0,.88);border:2px solid rgba(255,215,0,.4);
+  border-radius:2px;font-size:11px;color:#e6edf3;opacity:0;pointer-events:none;transition:opacity .2s;font-family:'ArkPixel','Courier New',monospace}
+.room-card:hover .room-info{opacity:1}
+.room-info-name{color:var(--gold);font-weight:600}
+.room-info-detail{color:#aaa;font-size:10px;margin-top:2px}
+
+/* Status text overlay — Star-Office-UI style (bottom-left, like "[整理文档] 工作中") */
+.room-state-text{position:absolute;bottom:32px;left:6px;z-index:8;padding:2px 8px;border-radius:2px;font-size:10px;
+  background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.15);color:#bbb;font-family:'ArkPixel','Courier New',monospace;
+  opacity:0;transition:opacity .3s}
+.room-card.active .room-state-text{opacity:1;color:#5fd068}
+.room-card.connecting .room-state-text{opacity:1;color:#f59e0b}
+
+/* Animations */
+@keyframes screenFlicker{0%,100%{opacity:.85}50%{opacity:1}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* === REVIEW LINE SVG === */
+.review-line-svg{position:absolute;inset:0;z-index:6;pointer-events:none}
+.review-line{stroke:var(--gold);stroke-width:2;stroke-dasharray:8 4;fill:none;opacity:0;animation:reviewGlow 5s ease forwards}
+@keyframes reviewGlow{0%{opacity:0;stroke-dashoffset:0}10%{opacity:.7}80%{opacity:.7;stroke-dashoffset:-120}100%{opacity:0;stroke-dashoffset:-150}}
+
+/* Responsive */
+@media(max-width:900px){.room-row{flex-wrap:wrap}.room-card{min-width:45%}}
+</style>
+</head>
+<body>
+
+<!-- ===== ROOM SCENE ===== -->
+<div class="room" id="room">
+  <div class="room-vignette"></div>
+
+  <!-- Header Navigation Bar -->
+  <div class="header-bar" id="header-bar">
+    <div class="header-logo">
+      <div class="header-logo-icon">&#9672;</div>
+      <div class="header-logo-text">Ziyan Studio</div>
+    </div>
+    <div class="header-nav" id="header-nav">
+      <!-- Nav items built dynamically -->
+    </div>
+    <div class="header-sep"></div>
+    <div class="header-status"><div class="header-status-dot"></div><span id="header-active-count">0 运行中</span></div>
+    <div class="header-sep"></div>
+    <button id="btn-restart-server" onclick="restartServer()" style="padding:4px 10px;font-family:'ArkPixel','Courier New',monospace;font-size:10px;color:#e94560;background:rgba(233,69,96,.1);border:1px solid rgba(233,69,96,.4);border-radius:3px;cursor:pointer;letter-spacing:1px;transition:all .3s" onmouseover="this.style.background='rgba(233,69,96,.25)'" onmouseout="this.style.background='rgba(233,69,96,.1)'">🔄 重启服务</button>
+  </div>
+
+  <!-- Floating particles -->
+  <div class="dust-p" style="right:22%;top:20%;animation-delay:0s"></div>
+  <div class="dust-p" style="right:28%;top:35%;animation-delay:-2s"></div>
+  <div class="dust-p" style="right:18%;top:50%;animation-delay:-4s"></div>
+  <div class="dust-p" style="right:32%;top:30%;animation-delay:-5.5s"></div>
+  <div class="dust-p" style="right:25%;top:45%;animation-delay:-3s"></div>
+  <div class="dust-p" style="left:15%;top:25%;animation-delay:-1s"></div>
+  <div class="dust-p" style="left:25%;top:40%;animation-delay:-3.5s"></div>
+  <div class="dust-p" style="left:10%;top:55%;animation-delay:-6s"></div>
+
+  <!-- Chibis generated by JS -->
+  <div id="chibi-container"></div>
+
+  <!-- Bottom bar -->
+  <div class="bottom-bar" id="bottom-bar"></div>
+</div>
+
+<!-- Terminal Panel -->
+<div class="term-panel" id="term-panel">
+  <div class="tp-resize" id="tp-resize"></div>
+  <div class="tp-header" id="tp-header"></div>
+  <div class="tp-body" id="tp-body">
+    <div class="tp-placeholder" id="tp-ph">&#9670; 点击「启动」开始会话</div>
+  </div>
+  <div class="tp-actions" id="tp-actions"></div>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal"><button class="modal-x" onclick="closeModal()">&times;</button><div id="modal-c"></div></div>
+</div>
+
+<!-- CWD Picker -->
+<div class="cwd-overlay" id="cwd-overlay">
+  <div class="cwd-box">
+    <div class="cwd-title" id="cwd-title">选择项目目录</div>
+    <div class="cwd-list" id="cwd-list"></div>
+    <button class="cwd-cancel" onclick="closeCwdPicker()">取消</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-search@0.13.0/lib/xterm-addon-search.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-unicode11@0.8.0/lib/xterm-addon-unicode11.min.js"></script>
+<script>
+let employees=[],terminals={},activeId=null,customData={},curPanelId=null;
+const PRESETS={"code-reviewer":["Code Review","Security Audit","Performance Analysis","Best Practices","Clean Code","Refactoring","SOLID Principles"],architect:["System Design","Distributed Systems","API Design","Scalability","Tech Roadmap","Microservices","Event Driven"]};
+const EXPR=["confident","focused","happy","thinking"],EXPR_CN={confident:"自信",focused:"专注",happy:"开心",thinking:"思考"};
+const TONES=[{v:'strict',l:'严格专业'},{v:'mentor',l:'导师引导'},{v:'friendly',l:'友好协作'},{v:'concise',l:'简洁高效'}];
+const FOCUS_AREAS_REVIEW=['安全性','性能','可读性','错误处理','代码复杂度','命名规范','测试覆盖','并发安全'];
+const FOCUS_AREAS_ARCH=['可扩展性','容错设计','数据一致性','系统边界','性能瓶颈','安全架构','可观测性','成本优化'];
+const REVIEW_STYLES=[{v:'line-by-line',l:'逐行审查'},{v:'overview',l:'整体概览'},{v:'critical-only',l:'仅关键问题'}];
+let cwdPickerCb=null;
+
+function loadCD(){try{const r=localStorage.getItem('ce-custom');if(r)customData=JSON.parse(r)}catch{}}
+function saveCD(){localStorage.setItem('ce-custom',JSON.stringify(customData))}
+function getC(id){if(!customData[id])customData[id]={};return customData[id]}
+function getProviderKey(provider){if(provider==='copilot')return'copilot';if(provider==='deepseek')return'deepseek';return'claude'}
+function getProviderConfigFile(provider){const k=getProviderKey(provider);if(k==='copilot')return'COPILOT';if(k==='deepseek')return'DEEPSEEK';return'CLAUDE'}
+function applyEmployeeUpdate(updated){
+  const i=employees.findIndex(e=>e.id===updated.id);if(i<0)return;
+  employees[i]=updated;
+  const badge=document.querySelector(`#room-${updated.id} .room-provider-badge`);
+  const provider=getProviderKey(updated.provider);
+  if(badge){badge.className=`room-provider-badge ${provider}`;badge.textContent=provider.toUpperCase()}
+}
+
+/* ===== Header Nav ===== */
+function buildHeaderNav(){
+  const nav=document.getElementById('header-nav');nav.innerHTML='';
+  employees.forEach(e=>{
+    const item=document.createElement('div');item.className='header-nav-item';item.id=`hn-${e.id}`;
+    item.textContent=e.name;item.title=e.description||e.name;
+    item.addEventListener('click',()=>selectChar(e.id));
+    nav.appendChild(item);
+  });
+}
+function updateHeaderStatus(){
+  const count=Object.values(terminals).filter(t=>t.started).length;
+  const el=document.getElementById('header-active-count');
+  if(el)el.textContent=`${count} 运行中`;
+}
+
+/* ===== Bottom Bar ===== */
+function buildBottomBar(){
+  const bar=document.getElementById('bottom-bar');bar.innerHTML='';
+  const projectEmps=employees.filter(e=>e.category==='project');
+  const utilityEmps=employees.filter(e=>e.category!=='project');
+  function addItems(list){
+    list.forEach(e=>{
+      const btn=document.createElement('div');btn.className='bb-item';btn.id=`bb-${e.id}`;btn.title=e.name;
+      btn.innerHTML=`${e.avatar}<span class="bb-dot" id="bd-${e.id}"></span><span class="bb-name">${e.name}</span>`;
+      btn.addEventListener('click',()=>selectChar(e.id));
+      bar.appendChild(btn);
+    });
+  }
+  addItems(projectEmps);
+  if(projectEmps.length&&utilityEmps.length){
+    const sep=document.createElement('div');sep.className='bb-sep';bar.appendChild(sep);
+  }
+  addItems(utilityEmps);
+}
+
+/* ===== Select Character (open term panel) ===== */
+function selectChar(id){
+  const e=employees.find(x=>x.id===id);if(!e)return;
+  curPanelId=id;activeId=id;
+  /* Highlight bottom bar + header nav */
+  document.querySelectorAll('.bb-item').forEach(b=>b.classList.remove('active'));
+  const bb=document.getElementById(`bb-${id}`);if(bb)bb.classList.add('active');
+  document.querySelectorAll('.header-nav-item').forEach(b=>b.classList.remove('active'));
+  const hn=document.getElementById(`hn-${id}`);if(hn)hn.classList.add('active');
+  /* Open term panel + shift scene */
+  document.getElementById('term-panel').classList.add('open');
+  document.getElementById('room').classList.add('panel-open');
+  document.getElementById('modal-bg').classList.add('panel-shift');
+  document.getElementById('cwd-overlay').classList.add('panel-shift');
+  layoutOffice();
+  /* Update header */
+  const t=terminals[id],stClass=t.started?'running':'',stText=t.started?'工作中':'待命';
+  document.getElementById('tp-header').innerHTML=`
+    <div class="tp-avatar" style="border-color:${e.color}">${e.avatar}</div>
+    <div class="tp-info"><div class="tp-name">${e.name}${getResumeDotHtml(id)}</div>
+      <div class="tp-status"><span class="tp-dot ${stClass}" id="td-${id}"></span><span id="tt-${id}">${stText}</span></div>
+    </div>
+    <button class="tp-manage" onclick="openHistory('${e.id}')">历史</button>
+    <button class="tp-manage" onclick="openModal('${e.id}')">管理</button>
+    <button class="tp-close" onclick="closeTermPanel()">&times;</button>`;
+  /* Show correct terminal, hide others */
+  document.querySelectorAll('.tp-term').forEach(p=>p.classList.remove('active'));
+  const pn=document.getElementById(`tp-term-${id}`);
+  if(pn)pn.classList.add('active');
+  document.getElementById('tp-ph').classList.toggle('hidden',t.started);
+  /* Update actions */
+  updatePanelActions(id);
+  /* Fit terminal + always focus + keep scroll at bottom */
+  if(t.fitAddon)setTimeout(()=>{t.fitAddon.fit();sendResize(id);if(t.term){t._autoScroll=true;t.term.write('',()=>t.term.scrollToBottom());t.term.focus()}},150);
+}
+
+function updatePanelActions(id){
+  const t=terminals[id],acts=document.getElementById('tp-actions');
+  const histBtn=`<button class="tp-btn tp-btn-hist" onclick="openHistory('${id}')">&#128220; 历史</button>`;
+  if(t.started){
+    acts.innerHTML=`<button class="tp-btn tp-btn-no" onclick="stopSession('${id}')">&#9632; 停止</button>${histBtn}`;
+  }else{
+    acts.innerHTML=`<button class="tp-btn tp-btn-go" onclick="startSession('${id}')">&#9654; 启动</button>${histBtn}`;
+  }
+}
+
+function closeTermPanel(){
+  document.getElementById('term-panel').classList.remove('open');
+  document.getElementById('room').classList.remove('panel-open');
+  document.getElementById('modal-bg').classList.remove('panel-shift');
+  document.getElementById('cwd-overlay').classList.remove('panel-shift');
+  document.querySelectorAll('.bb-item').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.header-nav-item').forEach(b=>b.classList.remove('active'));
+  curPanelId=null;
+  layoutOffice();
+}
+
+/* ===== Status Update ===== */
+function upSt(id,st){
+  /* Bottom bar dot */
+  const bdot=document.getElementById(`bd-${id}`);
+  /* Term panel dot (if this employee is selected) */
+  const tdot=document.getElementById(`td-${id}`),ttxt=document.getElementById(`tt-${id}`);
+  /* Room card */
+  const card=document.getElementById(`room-${id}`);
+  const cat=document.getElementById(`cat-${id}`);
+  const rsb=document.getElementById(`rsb-${id}`);
+  const ri=document.getElementById(`ri-${id}`);
+  const rst=document.getElementById(`rst-${id}`);
+  if(st==='running'){
+    bdot&&(bdot.className='bb-dot running');
+    tdot&&(tdot.className='tp-dot running');ttxt&&(ttxt.textContent='工作中',ttxt.style.color='#5fd068');
+    /* Activate room */
+    if(card){card.classList.remove('connecting','vacant');card.classList.add('active')}
+    if(cat){cat.className='room-cat at-desk'}
+    if(rsb)rsb.textContent='WORKING';
+    if(rst)rst.textContent='工作中';
+    startTimes[id]=Date.now();
+    if(ri)ri.textContent='工作中 0m0s';
+    stopRoomBubble(id);
+  }else if(st==='connecting'){
+    bdot&&(bdot.className='bb-dot connecting');
+    tdot&&(tdot.className='tp-dot connecting');ttxt&&(ttxt.textContent='连接中...',ttxt.style.color='#d29922');
+    if(card){card.classList.remove('active','vacant');card.classList.add('connecting')}
+    if(rsb)rsb.textContent='CONNECTING';
+    if(rst)rst.textContent='连接中...';
+    if(ri)ri.textContent='连接中...';
+  }else{
+    bdot&&(bdot.className='bb-dot');
+    tdot&&(tdot.className='tp-dot');ttxt&&(ttxt.textContent='待命',ttxt.style.color='');
+    /* Deactivate room — cat goes back to sleeping in bed */
+    if(card){card.classList.remove('active','connecting')}
+    if(cat){cat.className='room-cat idle'}
+    if(rsb)rsb.textContent='IDLE';
+    if(rst)rst.textContent='';
+    delete startTimes[id];
+    if(ri)ri.textContent='待命中';
+    startRoomBubble(id);
+  }
+  if(curPanelId===id)updatePanelActions(id);
+  updateHeaderStatus();
+}
+
+/* ===== Modal ===== */
+let mEid=null;
+function openModal(eid){
+  mEid=eid;const e=employees.find(x=>x.id===eid),c=getC(eid);
+  const color=c.color||e.color,expr=c.expression||'confident',skills=c.skills||e.skills||[],pre=PRESETS[eid]||[];
+  const pers=e.personality||null;
+  const provider=getProviderKey(e.provider);
+  let persHtml='';
+  if(pers){
+    const curTone=pers.tone||'strict';
+    const focusAreas=eid==='code-reviewer'?FOCUS_AREAS_REVIEW:FOCUS_AREAS_ARCH;
+    const curFocus=pers.focusAreas||[];
+    persHtml=`<div class="m-sec"><div class="m-sec-t">性格配置</div><div class="pers-grid">
+      <div class="pers-item"><label>语气风格</label><select class="pers-select" id="pers-tone">${TONES.map(t=>`<option value="${t.v}"${t.v===curTone?' selected':''}>${t.l}</option>`).join('')}</select></div>`;
+    if(eid==='code-reviewer'){
+      const curStyle=pers.reviewStyle||'line-by-line';
+      persHtml+=`<div class="pers-item"><label>审查风格</label><select class="pers-select" id="pers-rstyle">${REVIEW_STYLES.map(s=>`<option value="${s.v}"${s.v===curStyle?' selected':''}>${s.l}</option>`).join('')}</select></div>`;
+    }
+    persHtml+=`<div class="pers-item"><label>关注领域</label><div class="pers-tags" id="pers-focus">${focusAreas.map(a=>`<span class="pers-tag${curFocus.includes(a)?' on':''}" onclick="this.classList.toggle('on')">${a}</span>`).join('')}</div></div>
+      <div class="pers-item" style="align-items:flex-start"><label>补充指令</label><textarea class="pers-textarea" id="pers-custom" placeholder="自定义补充指令...">${pers.customInstructions||''}</textarea></div>
+    </div></div>`;
+  }
+  document.getElementById('modal-c').innerHTML=`
+    <div class="m-title">${e.name} - 管理</div>
+    <div class="m-sec"><div class="m-sec-t">外观</div>
+      <div class="f-row"><span class="f-lbl">主题色</span><input type="color" id="mc" value="${color}" onchange="document.getElementById('mch').textContent=this.value"><span class="f-hex" id="mch">${color}</span></div>
+      <div class="f-row"><span class="f-lbl">表情</span><div class="expr-s" id="esel">${EXPR.map(x=>`<button class="ex-b${x===expr?' on':''}" data-e="${x}" onclick="document.querySelectorAll('#esel .ex-b').forEach(b=>b.classList.toggle('on',b.dataset.e==='${x}'))">${EXPR_CN[x]}</button>`).join('')}</div></div>
+    </div>
+    <div class="m-sec"><div class="m-sec-t">技能</div>
+      <div class="sk-area" id="msk">${skills.map((s,i)=>`<span class="sk-tag">${s}<span class="sk-rm" onclick="rmSk(${i})">&times;</span></span>`).join('')}</div>
+      <div class="sk-add"><input id="nsi" placeholder="新技能..." onkeydown="if(event.key==='Enter')addSk()"><button onclick="addSk()">+</button></div>
+      <div class="m-sec-t" style="font-size:9px;margin-top:4px">预设</div>
+      <div class="pre-sk" id="prs">${pre.filter(p=>!skills.includes(p)).map(p=>`<button class="pr-s" onclick="addPS('${p.replace(/'/g,"\\'")}')">${p}</button>`).join('')}</div>
+    </div>
+    <div class="m-sec"><div class="m-sec-t">AI 后端</div>
+      <div class="expr-s" id="provider-sel">
+        <button class="ex-b${provider==='claude'?' on':''}" data-provider="claude" onclick="selProvider('claude')">Claude</button>
+        <button class="ex-b${provider==='copilot'?' on':''}" data-provider="copilot" onclick="selProvider('copilot')">Copilot</button>
+        <button class="ex-b${provider==='deepseek'?' on':''}" data-provider="deepseek" onclick="selProvider('deepseek')">DeepSeek V4</button>
+      </div>
+      <div class="sp-n" style="margin-top:6px">${terminals[eid]?.started?'切换后会自动重启当前会话。':'切换后在下次启动时生效。'}</div>
+    </div>
+    <div class="m-sec" id="ds-sec" style="display:${provider==='deepseek'?'block':'none'}"><div class="m-sec-t">DeepSeek 配置（全局）</div>
+      <div class="pers-grid">
+        <div class="pers-item"><label>API Key</label><input type="password" class="pers-select" id="ds-apikey" placeholder="sk-..." autocomplete="off"></div>
+        <div class="pers-item"><label>Base URL</label><input type="text" class="pers-select" id="ds-baseurl" placeholder="https://api.deepseek.com"></div>
+      </div>
+      <div class="sp-n" style="margin-top:4px">保存后需重新启动 DeepSeek 员工会话生效</div>
+    </div>
+    ${persHtml}
+    <div class="m-sec"><div class="m-sec-t">提示词</div><div class="sp-n">通过 <b>${getProviderConfigFile(e.provider)}.md</b> 配置 | <code>${e.cwd}</code>${e.cwdMode==='multi'?' (多项目)':''}</div></div>
+    <button class="sv-b" onclick="saveMd()">保存</button>`;
+  document.getElementById('modal-bg').classList.add('open');
+  // 加载 DeepSeek 全局配置
+  fetch('/api/deepseek-config').then(r=>r.json()).then(d=>{
+    const ak=document.getElementById('ds-apikey'),bu=document.getElementById('ds-baseurl');
+    if(ak)ak.placeholder=d.hasApiKey?'已配置（留空则保持不变）':'sk-...';
+    if(bu)bu.value=d.baseUrl||'https://api.deepseek.com';
+  }).catch(()=>{});
+}
+function closeModal(){document.getElementById('modal-bg').classList.remove('open');mEid=null}
+function selProvider(p){
+  document.querySelectorAll('#provider-sel .ex-b').forEach(b=>b.classList.toggle('on',b.dataset.provider===p));
+  document.getElementById('ds-sec').style.display=p==='deepseek'?'block':'none';
+}
+document.getElementById('modal-bg').addEventListener('click',function(ev){if(ev.target===this)closeModal()});
+function getSks(){return Array.from(document.querySelectorAll('#msk .sk-tag')).map(t=>t.textContent.replace('\u00d7','').trim())}
+function rrSk(sks){
+  document.getElementById('msk').innerHTML=sks.map((s,i)=>`<span class="sk-tag">${s}<span class="sk-rm" onclick="rmSk(${i})">&times;</span></span>`).join('');
+  const pre=PRESETS[mEid]||[];
+  document.getElementById('prs').innerHTML=pre.filter(p=>!sks.includes(p)).map(p=>`<button class="pr-s" onclick="addPS('${p.replace(/'/g,"\\'")}')">${p}</button>`).join('');
+}
+function rmSk(i){const s=getSks();s.splice(i,1);rrSk(s)}
+function addSk(){const inp=document.getElementById('nsi'),v=inp.value.trim();if(!v)return;const s=getSks();if(!s.includes(v)){s.push(v);rrSk(s)}inp.value=''}
+function addPS(n){const s=getSks();if(!s.includes(n)){s.push(n);rrSk(s)}}
+async function saveMd(){
+  if(!mEid)return;const c=getC(mEid);c.color=document.getElementById('mc').value;
+  const ae=document.querySelector('#esel .ex-b.on');c.expression=ae?ae.dataset.e:'confident';c.skills=getSks();saveCD();
+  let emp=employees.find(x=>x.id===mEid);
+  const providerBtn=document.querySelector('#provider-sel .ex-b.on');
+  const nextProvider=providerBtn?providerBtn.dataset.provider:getProviderKey(emp?.provider);
+  if(emp&&nextProvider!==getProviderKey(emp.provider)){
+    try{
+      const r=await fetch('/api/provider',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({employeeId:mEid,provider:nextProvider})});
+      const d=await r.json();
+      if(!r.ok||!d.ok)throw new Error(d.error||'切换失败');
+      if(d.employee)applyEmployeeUpdate(d.employee);
+      emp=employees.find(x=>x.id===mEid);
+      showToast(`${emp.name} 已切换到 ${nextProvider==='copilot'?'Copilot':nextProvider==='deepseek'?'DeepSeek V4':'Claude'}${d.restarted?'，会话已重启':''}`);
+    }catch(err){
+      showToast(`切换失败: ${err.message||'未知错误'}`,5000);
+      return;
+    }
+  }
+  if(emp&&emp.personality){
+    const toneEl=document.getElementById('pers-tone');
+    const focusEls=document.querySelectorAll('#pers-focus .pers-tag.on');
+    const customEl=document.getElementById('pers-custom');
+    const rstyleEl=document.getElementById('pers-rstyle');
+    const pers={tone:toneEl?toneEl.value:'strict',focusAreas:Array.from(focusEls).map(t=>t.textContent),language:'zh-CN'};
+    if(rstyleEl)pers.reviewStyle=rstyleEl.value;
+    if(emp.personality.designFocus)pers.designFocus=emp.personality.designFocus;
+    if(customEl&&customEl.value.trim())pers.customInstructions=customEl.value.trim();
+    fetch('/api/personality',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({employeeId:mEid,personality:pers})})
+      .then(r=>r.json()).then(d=>{if(d.ok){emp.personality=pers}}).catch(()=>{});
+  }
+  // 保存 DeepSeek 配置
+  const dsApiKey=document.getElementById('ds-apikey');
+  const dsBaseUrl=document.getElementById('ds-baseurl');
+  if(dsApiKey||dsBaseUrl){
+    const body={};
+    if(dsApiKey && dsApiKey.value.trim())body.apiKey=dsApiKey.value.trim();
+    if(dsBaseUrl && dsBaseUrl.value.trim())body.baseUrl=dsBaseUrl.value.trim();
+    if(Object.keys(body).length>0){
+      fetch('/api/deepseek-config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+        .then(r=>r.json()).then(d=>{if(d.ok)showToast('DeepSeek 配置已保存');}).catch(()=>{});
+    }
+  }
+  closeModal();
+}
+
+/* ===== Chibi image map & dynamic generation ===== */
+const CHIBI_IMG={'code-reviewer':'/img/reviewer.gif',architect:'/img/architect.gif'};
+const CHIBI_ALIAS={'code-reviewer':'reviewer',architect:'architect'};
+
+/* All rooms use the same Star character (orange cat + lobster) */
+const BUBBLE_TEXTS=['喵~ 代码写完啦','呼噜呼噜...','尾巴摇一摇','今天也很努力呢','咖啡好香','键盘真好踩','有bug的味道...','先打个盹再说','这个需求好难啃','测试全绿了!','架构图画好了','数据对上了喵','龙虾好吃','沙发真舒服...'];
+let bubbleTimers={};
+let startTimes={};
+
+function createRoomCard(emp,index){
+  const card=document.createElement('div');
+  card.className='room-card';card.id=`room-${emp.id}`;
+  card.dataset.empId=emp.id;card.dataset.index=index;
+  const flowerFrame=index%7;
+  const isRunning=terminals[emp.id]&&terminals[emp.id].started;
+  if(isRunning)card.classList.add('active');
+  card.innerHTML=`
+    <div class="room-provider-badge ${emp.provider||'claude'}">${(emp.provider||'claude').toUpperCase()}</div>
+    <div class="room-info"><div class="room-info-name">${emp.name}</div><div class="room-info-detail" id="ri-${emp.id}">${isRunning?'工作中':'待命中'}</div></div>
+    <div class="room-status-badge" id="rsb-${emp.id}">${isRunning?'WORKING':'IDLE'}</div>
+    <div class="room-state-text" id="rst-${emp.id}"></div>
+    <div class="room-furniture room-desk"></div>
+    <div class="room-furniture room-flower f${flowerFrame}" style="bottom:${12+index*3}%;right:${28+index*2}%"></div>
+    <div class="room-furniture room-sofa"></div>
+    <div class="room-furniture room-bookshelf"></div>
+    <div class="room-furniture room-wall-lamp"></div>
+    <div class="room-cat ${isRunning?'at-desk':'idle'}" id="cat-${emp.id}"></div>
+    <div class="room-plaque">
+      <span class="room-plaque-star">⭐</span>
+      <span class="room-plaque-name">${emp.name} 的办公室</span>
+      <span class="room-dot"></span>
+      <span class="room-plaque-star">⭐</span>
+    </div>`;
+  card.addEventListener('click',()=>selectChar(emp.id));
+  startRoomBubble(emp.id);
+  return card;
+}
+function startRoomBubble(id){
+  stopRoomBubble(id);
+  bubbleTimers[id]=setInterval(()=>{
+    const card=document.getElementById(`room-${id}`);
+    if(!card||card.classList.contains('active'))return;
+    const old=card.querySelector('.room-bubble');if(old)old.remove();
+    const b=document.createElement('div');b.className='room-bubble';
+    b.textContent=BUBBLE_TEXTS[Math.floor(Math.random()*BUBBLE_TEXTS.length)];
+    b.style.bottom='55%';b.style.left=(25+Math.random()*30)+'%';
+    card.appendChild(b);setTimeout(()=>b.remove(),4000);
+  },6000+Math.random()*6000);
+}
+function stopRoomBubble(id){if(bubbleTimers[id]){clearInterval(bubbleTimers[id]);delete bubbleTimers[id]}}
+
+function buildOffice(){
+  const ct=document.getElementById('chibi-container');ct.innerHTML='';
+  const office=document.createElement('div');office.className='office';office.id='office';
+  const building=document.createElement('div');building.className='office-building';
+  /* Split employees into two rows: top row (4) + bottom row (3) */
+  const topCount=4;
+  const topEmps=employees.slice(0,topCount);
+  const botEmps=employees.slice(topCount);
+  /* === Top row === */
+  const topRow=document.createElement('div');topRow.className='room-row';
+  topEmps.forEach((e,i)=>{
+    const card=createRoomCard(e,i);
+    /* Side doors between adjacent rooms */
+    if(i<topEmps.length-1){const d=document.createElement('div');d.className='room-door door-right';d.innerHTML='<div class="door-frame"></div>';card.appendChild(d)}
+    /* Bottom door to corridor */
+    const db=document.createElement('div');db.className='room-door door-bottom';db.innerHTML='<div class="door-frame"></div>';card.appendChild(db);
+    topRow.appendChild(card);
+  });
+  building.appendChild(topRow);
+  /* === Corridor === */
+  const corridor=document.createElement('div');corridor.className='corridor';
+  const deco=document.createElement('div');deco.className='corridor-deco';
+  deco.innerHTML='🌿 &nbsp; 🪴 &nbsp; ☕ &nbsp; 🏮 &nbsp; 🌿 &nbsp; 📋 &nbsp; 🪴 &nbsp; 🏮';
+  corridor.appendChild(deco);
+  building.appendChild(corridor);
+  /* === Bottom row === */
+  const botRow=document.createElement('div');botRow.className='room-row';
+  botEmps.forEach((e,i)=>{
+    const card=createRoomCard(e,topCount+i);
+    /* Side doors between adjacent rooms */
+    if(i<botEmps.length-1){const d=document.createElement('div');d.className='room-door door-right';d.innerHTML='<div class="door-frame"></div>';card.appendChild(d)}
+    /* Top door to corridor */
+    const dt=document.createElement('div');dt.className='room-door door-top';dt.innerHTML='<div class="door-frame"></div>';card.appendChild(dt);
+    botRow.appendChild(card);
+  });
+  /* If bottom row has fewer rooms, add an empty cell to balance */
+  if(botEmps.length<topCount){
+    const empty=document.createElement('div');
+    empty.style.cssText='flex:1;background:rgba(26,26,46,.6);border-right:none;position:relative';
+    empty.innerHTML='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:24px;opacity:.3;font-family:ArkPixel,monospace;color:#64477d">空闲工位</div>';
+    botRow.appendChild(empty);
+  }
+  building.appendChild(botRow);
+  office.appendChild(building);
+  /* SVG overlay for review lines */
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('class','review-line-svg');svg.id='review-svg';
+  office.appendChild(svg);
+  ct.appendChild(office);
+  layoutOffice();
+}
+
+function layoutOffice(){
+  const panelOpen=document.getElementById('room').classList.contains('panel-open');
+  const bar=document.getElementById('bottom-bar');
+  const center=(window.innerWidth-(panelOpen?panelWidth:0))/2;
+  bar.style.left=center+'px';
+}
+
+function showReviewLine(sourceId,targetId){
+  const svg=document.getElementById('review-svg');
+  if(!svg)return;
+  const srcCard=document.getElementById(`room-${sourceId}`);
+  const tgtCard=document.getElementById(`room-${targetId}`);
+  if(!srcCard||!tgtCard)return;
+  const office=document.getElementById('office');
+  if(!office)return;
+  const oRect=office.getBoundingClientRect();
+  const s=srcCard.getBoundingClientRect();
+  const t=tgtCard.getBoundingClientRect();
+  const x1=s.left+s.width/2-oRect.left;
+  const y1=s.top+s.height/2-oRect.top;
+  const x2=t.left+t.width/2-oRect.left;
+  const y2=t.top+t.height/2-oRect.top;
+  const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('class','review-line');
+  line.setAttribute('x1',x1);line.setAttribute('y1',y1);
+  line.setAttribute('x2',x2);line.setAttribute('y2',y2);
+  svg.appendChild(line);
+  setTimeout(()=>line.remove(),5500);
+}
+
+/* Running time updater */
+setInterval(()=>{
+  employees.forEach(e=>{
+    const ri=document.getElementById(`ri-${e.id}`);
+    if(!ri)return;
+    if(startTimes[e.id]){
+      const sec=Math.floor((Date.now()-startTimes[e.id])/1000);
+      const min=Math.floor(sec/60);
+      const hr=Math.floor(min/60);
+      ri.textContent=hr>0?`工作中 ${hr}h${min%60}m`:`工作中 ${min}m${sec%60}s`;
+    }
+  });
+},30000);
+
+/* CWD Picker */
+function showCwdPicker(emp,cb){
+  const overlay=document.getElementById('cwd-overlay');
+  const list=document.getElementById('cwd-list');
+  document.getElementById('cwd-title').textContent=`${emp.name} - 选择项目目录`;
+  list.innerHTML='';
+  (emp.cwdList||[]).forEach(dir=>{
+    const btn=document.createElement('div');btn.className='cwd-opt';
+    btn.textContent=dir.split('/').pop()+' — '+dir;
+    btn.addEventListener('click',()=>{closeCwdPicker();cb(dir)});
+    list.appendChild(btn);
+  });
+  cwdPickerCb=cb;overlay.classList.add('open');
+}
+function closeCwdPicker(){document.getElementById('cwd-overlay').classList.remove('open');cwdPickerCb=null}
+
+/* ===== Terminal — smart scroll ===== */
+/* _autoScroll: true=跟随底部, false=用户上滚查看历史 */
+function createTerm(id){
+  const e=employees.find(x=>x.id===id),c=getC(id),color=c.color||e.color;
+  const ct=document.getElementById(`tp-term-${id}`),td=document.createElement('div');
+  td.style.flex='1';td.style.minHeight='0';ct.appendChild(td);
+  const term=new Terminal({fontSize:13,fontFamily:"'SF Mono','Menlo','Monaco','Courier New',monospace",
+    theme:{background:'#0d1117',foreground:'#e6edf3',cursor:color,cursorAccent:'#0d1117',selectionBackground:'rgba(56,139,253,0.3)',
+      black:'#484f58',red:'#ff7b72',green:'#3fb950',yellow:'#d29922',blue:'#58a6ff',magenta:'#bc8cff',cyan:'#39d353',white:'#b1bac4',
+      brightBlack:'#6e7681',brightRed:'#ffa198',brightGreen:'#56d364',brightYellow:'#e3b341',brightBlue:'#79c0ff',brightMagenta:'#d2a8ff',brightCyan:'#56d364',brightWhite:'#f0f6fc'},
+    cursorBlink:true,scrollback:10000,allowProposedApi:true});
+  const fa=new FitAddon.FitAddon();term.loadAddon(fa);
+  if(typeof Unicode11Addon!=='undefined'){try{const u11=new Unicode11Addon.Unicode11Addon();term.loadAddon(u11);term.unicode.activeVersion='11';}catch(e){console.warn('Unicode11Addon load failed:',e);}}
+  term.open(td);fa.fit();
+  terminals[id].term=term;terminals[id].fitAddon=fa;terminals[id]._autoScroll=true;
+  const tRef=terminals[id];
+  /* IME 中文输入：组合期间暂停终端写入（防止 flushWrite 打断输入法导致闪烁） */
+  tRef._composing=false;
+  if(term.textarea){
+    term.textarea.addEventListener('compositionstart',()=>{tRef._composing=true;});
+    term.textarea.addEventListener('compositionend',(e)=>{
+      if(e.data&&tRef.ws?.readyState===WebSocket.OPEN){tRef._autoScroll=true;tRef.ws.send(JSON.stringify({type:'input',data:e.data}));}
+      setTimeout(()=>{tRef._composing=false;if(tRef._flushWrite)tRef._flushWrite();},0);
+    });
+  }
+  /* Shift+Enter → 换行；IME 期间阻止 xterm 处理原始按键 */
+  term.attachCustomKeyEventHandler(ev=>{
+    if(tRef._composing||ev.isComposing||ev.key==='Process'||ev.keyCode===229)return false;
+    if(ev.key==='Enter'&&ev.shiftKey){
+      if(ev.type==='keydown'&&tRef.ws?.readyState===WebSocket.OPEN){tRef._autoScroll=true;tRef.ws.send(JSON.stringify({type:'input',data:'\n'}))}
+      return false;
+    }
+    return true;
+  });
+  /* 用户输入（IME 组合期间由 compositionend 发送，onData 跳过防重复） */
+  term.onData(d=>{if(tRef._composing)return;if(d==='\x1b[I'||d==='\x1b[O')return;if(tRef.ws?.readyState===WebSocket.OPEN){tRef._autoScroll=true;tRef.ws.send(JSON.stringify({type:'input',data:d}))}});
+  /* 鼠标滚轮上滚 → 停止自动跟随 */
+  td.addEventListener('wheel',ev=>{if(ev.deltaY<0)tRef._autoScroll=false},{passive:true});
+  /* xterm 滚动事件：如果用户手动滚到了底部 → 恢复自动跟随 */
+  term.onScroll(()=>{if(term.buffer.active.viewportY>=term.buffer.active.baseY)tRef._autoScroll=true});
+  return term;
+}
+function startSession(id,targetCwd,opts){
+  const e=employees.find(x=>x.id===id),t=terminals[id];
+  // 防止重复：已连接或正在连接中均直接返回
+  if(t.started||t._connecting)return;
+  t._connecting=true;
+  const isReconnect=opts?.reconnect||false;
+  if(e.cwdMode==='multi'&&!targetCwd&&!t.serverAlive){
+    t._connecting=false;
+    showCwdPicker(e,(dir)=>startSession(id,dir));
+    return;
+  }
+  if(!isReconnect)selectChar(id);
+  document.getElementById(`ov-${id}`).classList.remove('hidden');
+  document.getElementById('tp-ph').classList.add('hidden');
+  if(!t.term){
+    createTerm(id);
+  }else{
+    /* Preserve history: add separator instead of clearing */
+    t.term.writeln('\r\n\x1b[90m--- 重新启动 ---\x1b[0m\r\n');
+  }
+  upSt(id,'connecting');
+  // 关闭旧 WS 连接，防止同一 session 积累多个客户端
+  if(t.ws&&t.ws.readyState!==WebSocket.CLOSED){try{t.ws.close();}catch{}}
+  const ws=new WebSocket(`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}?employee=${id}`);t.ws=ws;
+  ws.onopen=()=>ws.send(JSON.stringify({type:'start',targetCwd:targetCwd||undefined}));
+  /* 批量合并 PTY 数据写入；IME 组合期间暂停写入避免打断输入法 */
+  t._writeBuf='';t._writeTimer=null;
+  function flushWrite(){
+    if(!t._writeBuf)return;
+    if(t._composing){t._writeTimer=setTimeout(flushWrite,80);return;}
+    const chunk=t._writeBuf;t._writeBuf='';t._writeTimer=null;
+    t.term.write(chunk,()=>{if(t._autoScroll&&!t._scrollRaf){t._scrollRaf=requestAnimationFrame(()=>{t.term.scrollToBottom();t._scrollRaf=null})}});
+  }
+  t._flushWrite=flushWrite;
+  ws.onmessage=ev=>{const m=JSON.parse(ev.data);
+    if(m.type==='data'){t._writeBuf+=m.data;if(!t._writeTimer)t._writeTimer=setTimeout(flushWrite,16)}
+    if(m.type==='started'){
+      t.started=true;t._connecting=false;t.serverAlive=false;
+      document.getElementById(`ov-${id}`).classList.add('hidden');
+      upSt(id,'running');
+      setTimeout(()=>{t.fitAddon.fit();sendResize(id);t._autoScroll=true;t.term.write('',()=>t.term.scrollToBottom());updatePanelActions(id);if(!isReconnect)t.term.focus()},150);
+    }
+    if(m.type==='exit'){t.started=false;t._connecting=false;t.serverAlive=false;upSt(id,'idle');t.term.writeln('\r\n\x1b[90m--- 会话结束 ---\x1b[0m')}
+    if(m.type==='error'){t._connecting=false;document.getElementById(`ov-${id}`).classList.add('hidden');upSt(id,'idle');t.term.writeln(`\r\n\x1b[31m错误: ${m.message}\x1b[0m`)}
+    if(m.type==='status'){
+      if(m.status==='running'&&terminals[m.employeeId]&&!terminals[m.employeeId].started){
+        terminals[m.employeeId].serverAlive=true;
+        startSession(m.employeeId,undefined,{reconnect:true});
+      }
+      if(m.status==='stopped'&&terminals[m.employeeId]){terminals[m.employeeId].serverAlive=false;}
+      upSt(m.employeeId,m.status);
+    }
+    if(m.type==='employee-updated'&&m.employee){applyEmployeeUpdate(m.employee)}
+    if(m.type==='auto-review'){
+      const now=Date.now();
+      if(now-lastAutoReviewToast>5000){
+        lastAutoReviewToast=now;
+        showToast(`Code Reviewer 自动审查: ${m.sourceName} 推送了代码`);
+        const bdot=document.getElementById('bd-code-reviewer');if(bdot)bdot.className='bb-dot running';
+        showReviewLine('code-reviewer',id);
+      }
+    }
+    if(m.type==='mention-routed'){
+      // 高亮目标角色的底栏图标，并展示 toast 提示
+      const bdot=document.getElementById(`bd-${m.to}`);
+      if(bdot){
+        bdot.classList.add('connecting');
+        setTimeout(()=>bdot.classList.remove('connecting'),3000);
+      }
+      showToast(`@${m.fromName} → @${m.toName}: ${m.message.length>40?m.message.slice(0,40)+'…':m.message}`,3500);
+      // 若目标角色有 bb-item，短暂闪烁
+      const bbItem=document.getElementById(`bb-${m.to}`);
+      if(bbItem){bbItem.style.borderColor='#ffd700';setTimeout(()=>bbItem.style.borderColor='',2000);}
+    }
+  };
+  ws.onerror=()=>{t._connecting=false;t.started=false;};
+  ws.onclose=()=>{t._connecting=false;document.getElementById(`ov-${id}`).classList.add('hidden');if(t.started){t.started=false;t.term.writeln('\r\n\x1b[33m--- 连接断开 ---\x1b[0m')}};
+}
+function stopSession(id){const t=terminals[id];if(t.ws?.readyState===WebSocket.OPEN)t.ws.send(JSON.stringify({type:'stop'}))}
+function sendResize(id){const t=terminals[id];if(t.term&&t.ws?.readyState===WebSocket.OPEN)t.ws.send(JSON.stringify({type:'resize',cols:t.term.cols,rows:t.term.rows}))}
+
+/* ===== Restart Server ===== */
+async function restartServer(){
+  if(!confirm('确认重启整个 AI Employees 服务？\n所有运行中的会话将被保存并重启。')) return;
+  const btn=document.getElementById('btn-restart-server');
+  btn.disabled=true;btn.textContent='⏳ 重启中...';
+  try{
+    await fetch('/api/restart',{method:'POST'});
+    showToast('服务正在重启，3秒后自动刷新...');
+    setTimeout(()=>{
+      // 轮询等待服务恢复
+      let retries=0;
+      const poll=setInterval(async()=>{
+        retries++;
+        try{const r=await fetch('/api/config');if(r.ok){clearInterval(poll);location.reload()}}catch{}
+        if(retries>20){clearInterval(poll);btn.disabled=false;btn.textContent='🔄 重启服务';showToast('服务重启超时，请手动刷新')}
+      },1500);
+    },3000);
+  }catch(e){
+    btn.disabled=false;btn.textContent='🔄 重启服务';showToast('重启失败: '+e.message);
+  }
+}
+/* ===== Toast ===== */
+function showToast(msg,duration){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),duration||4000);
+}
+let lastAutoReviewToast=0;
+
+/* ===== Resume Status ===== */
+let resumeStatus={};
+async function fetchResumeStatus(){
+  try{const r=await fetch('/api/resume-status');resumeStatus=await r.json()}catch{}
+}
+function getResumeDotHtml(id){
+  const has=resumeStatus[id]?.hasResume;
+  return `<span class="resume-dot ${has?'has-resume':'no-resume'}" title="${has?'可恢复对话':'无记忆'}"></span>`;
+}
+
+/* ===== History ===== */
+const historyTerminals={};
+async function fetchLogList(id){
+  try{const r=await fetch(`/api/logs/${id}`);return await r.json()}catch{return[]}
+}
+async function fetchLogContent(id,filename){
+  try{const r=await fetch(`/api/logs/${id}/${filename}`);return await r.text()}catch{return''}
+}
+async function openHistory(id){
+  const panel=document.getElementById(`hist-${id}`);if(!panel)return;
+  panel.classList.add('open');
+  const list=await fetchLogList(id);
+  const listEl=document.getElementById(`hist-list-${id}`);
+  if(!list.length){listEl.innerHTML='<div style="padding:8px;color:#484f58;font-size:11px">暂无日志</div>';return}
+  listEl.innerHTML=list.map(f=>`<div class="history-item" onclick="loadLogFile('${id}','${f.filename}',this)"><span>${f.date}</span><span class="history-item-size">${(f.size/1024).toFixed(1)}KB</span></div>`).join('');
+}
+async function loadLogFile(id,filename,el){
+  /* Highlight active */
+  const listEl=document.getElementById(`hist-list-${id}`);
+  listEl.querySelectorAll('.history-item').forEach(i=>i.classList.remove('active'));
+  if(el)el.classList.add('active');
+  const bodyEl=document.getElementById(`hist-body-${id}`);
+  bodyEl.innerHTML='';
+  const content=await fetchLogContent(id,filename);
+  if(!content){bodyEl.innerHTML='<div class="history-empty">日志为空</div>';return}
+  /* Render with a read-only xterm */
+  const td=document.createElement('div');td.style.cssText='width:100%;height:100%';bodyEl.appendChild(td);
+  if(!historyTerminals[id]){
+    const ht=new Terminal({fontSize:12,fontFamily:"'SF Mono','Menlo','Monaco','Courier New',monospace",
+      theme:{background:'#0d1117',foreground:'#e6edf3'},disableStdin:true,scrollback:50000});
+    const fa=new FitAddon.FitAddon();ht.loadAddon(fa);
+    const sa=new SearchAddon.SearchAddon();ht.loadAddon(sa);
+    ht.open(td);fa.fit();
+    historyTerminals[id]={term:ht,fitAddon:fa,searchAddon:sa};
+  }else{
+    historyTerminals[id].term.open(td);historyTerminals[id].fitAddon.fit();
+  }
+  const ht=historyTerminals[id];
+  ht.term.clear();ht.term.write(content);
+  setTimeout(()=>ht.fitAddon.fit(),50);
+}
+function toggleHistSearch(id){
+  const bar=document.getElementById(`hist-search-${id}`);
+  const isOpen=bar.classList.toggle('open');
+  if(isOpen){const inp=document.getElementById(`hist-search-input-${id}`);inp.focus()}
+  else{const inp=document.getElementById(`hist-search-input-${id}`);inp.value='';const h=historyTerminals[id];if(h&&h.searchAddon)h.searchAddon.clearDecorations()}
+}
+function histSearchInput(id){
+  const keyword=document.getElementById(`hist-search-input-${id}`).value;
+  const h=historyTerminals[id];if(!h||!h.searchAddon)return;
+  if(!keyword){h.searchAddon.clearDecorations();return}
+  h.searchAddon.findNext(keyword);
+}
+function histSearchNext(id){
+  const keyword=document.getElementById(`hist-search-input-${id}`).value;
+  const h=historyTerminals[id];if(!h||!h.searchAddon||!keyword)return;
+  h.searchAddon.findNext(keyword);
+}
+function histSearchPrev(id){
+  const keyword=document.getElementById(`hist-search-input-${id}`).value;
+  const h=historyTerminals[id];if(!h||!h.searchAddon||!keyword)return;
+  h.searchAddon.findPrevious(keyword);
+}
+function histSearchKey(e,id){
+  if(e.key==='Enter'){e.preventDefault();if(e.shiftKey)histSearchPrev(id);else histSearchNext(id)}
+  if(e.key==='Escape'){toggleHistSearch(id)}
+}
+function closeHistory(id){
+  const panel=document.getElementById(`hist-${id}`);if(panel)panel.classList.remove('open');
+}
+
+/* ===== Init ===== */
+async function init(){
+  loadCD();const res=await fetch('/api/config'),config=await res.json();employees=config.employees;
+  let status={};try{const s=await fetch('/api/status');status=await s.json()}catch{}
+  await fetchResumeStatus();
+  buildHeaderNav();buildBottomBar();buildOffice();
+  const bodyEl=document.getElementById('tp-body');
+  employees.forEach(e=>{
+    const pn=document.createElement('div');pn.className='tp-term';pn.id=`tp-term-${e.id}`;
+    const ov=document.createElement('div');ov.className='tp-conn-ov hidden';ov.id=`ov-${e.id}`;
+    ov.innerHTML=`<div class="spinner"></div><div class="conn-t">启动 ${e.name}...</div>`;
+    pn.appendChild(ov);
+    /* History panel */
+    const hp=document.createElement('div');hp.className='history-panel';hp.id=`hist-${e.id}`;
+    hp.innerHTML=`<div class="history-header"><span class="history-title">历史记录 - ${e.name}</span><button class="history-close" onclick="toggleHistSearch('${e.id}')" title="搜索" style="font-size:12px">&#128269;</button><button class="history-close" onclick="closeHistory('${e.id}')">&times;</button></div><div class="history-list" id="hist-list-${e.id}"></div><div class="history-search" id="hist-search-${e.id}"><input type="text" id="hist-search-input-${e.id}" placeholder="搜索日志内容..." oninput="histSearchInput('${e.id}')" onkeydown="histSearchKey(event,'${e.id}')"><button onclick="histSearchPrev('${e.id}')" title="上一个">&#9650;</button><button onclick="histSearchNext('${e.id}')" title="下一个">&#9660;</button><button onclick="toggleHistSearch('${e.id}')" title="关闭">&times;</button></div><div class="history-body" id="hist-body-${e.id}"><div class="history-empty">选择日志文件查看</div></div>`;
+    pn.appendChild(hp);
+    bodyEl.appendChild(pn);
+    terminals[e.id]={term:null,fitAddon:null,ws:null,started:false};
+    if(status[e.id]?.alive)terminals[e.id].serverAlive=true;
+  });
+  /* 为未运行的员工恢复最新日志到终端（服务重启后保留历史） */
+  for(const e of employees){
+    if(!status[e.id]?.alive){
+      fetch(`/api/logs/${e.id}/latest`).then(r=>r.json()).then(d=>{
+        if(d.content){
+          if(!terminals[e.id].term)createTerm(e.id);
+          terminals[e.id].term.write('\x1b[90m--- 历史记录 ---\x1b[0m\r\n');
+          terminals[e.id].term.write(d.content);
+          terminals[e.id].term.write('\r\n\x1b[90m--- 历史结束 ---\x1b[0m\r\n',()=>terminals[e.id].term.scrollToBottom());
+        }
+      }).catch(()=>{});
+    }
+  }
+  let firstAlive=null;
+  employees.forEach(e=>{
+    if(terminals[e.id].serverAlive){
+      if(!firstAlive)firstAlive=e.id;
+      startSession(e.id,undefined,{reconnect:true});
+    }
+  });
+  if(firstAlive)selectChar(firstAlive);
+}
+
+/* ===== Panel Resize Drag ===== */
+let panelWidth=400;
+const PANEL_MIN=260,PANEL_MAX=900;
+function applyPanelWidth(w,skipLayout){
+  panelWidth=Math.max(PANEL_MIN,Math.min(PANEL_MAX,w));
+  document.documentElement.style.setProperty('--panel-w',panelWidth+'px');
+  if(!skipLayout)layoutOffice();
+  if(activeId&&terminals[activeId]?.fitAddon){
+    clearTimeout(rto);
+    rto=setTimeout(()=>{const _t=terminals[activeId];_t.fitAddon.fit();sendResize(activeId);if(_t.term&&_t._autoScroll)_t.term.write('',()=>_t.term.scrollToBottom())},60);
+  }
+}
+(function initResize(){
+  const handle=document.getElementById('tp-resize');
+  let dragging=false,startX=0,startW=0;
+  handle.addEventListener('mousedown',e=>{
+    e.preventDefault();
+    dragging=true;startX=e.clientX;startW=panelWidth;
+    document.getElementById('term-panel').classList.add('dragging');
+    document.body.style.cursor='col-resize';
+    document.body.style.userSelect='none';
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!dragging)return;
+    applyPanelWidth(startW+(startX-e.clientX));
+  });
+  document.addEventListener('mouseup',()=>{
+    if(!dragging)return;
+    dragging=false;
+    document.getElementById('term-panel').classList.remove('dragging');
+    document.body.style.cursor='';
+    document.body.style.userSelect='';
+  });
+})();
+
+let rto;window.addEventListener('resize',()=>{clearTimeout(rto);rto=setTimeout(()=>{layoutOffice();if(activeId&&terminals[activeId]?.fitAddon){const _t=terminals[activeId];_t.fitAddon.fit();sendResize(activeId);if(_t.term&&isTermAtBottom(_t.term))_t.term.scrollToBottom()}},100)});
+document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key>='1'&&e.key<='9'){const i=parseInt(e.key)-1;if(i<employees.length){e.preventDefault();selectChar(employees[i].id)}}if(e.key==='Escape'){closeModal();closeTermPanel()}});
+init();
+</script>
+</body>
+</html>

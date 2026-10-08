@@ -1,0 +1,16 @@
+{
+  "name": "claude-employees",
+  "version": "1.0.0",
+  "description": "Claude Code 多会话员工管理面板",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
+    "mysql2": "^3.11.0",
+    "node-pty": "^1.2.0-beta.11",
+    "ws": "^8.18.0"
+  }
+}

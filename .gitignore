@@ -1,0 +1,23 @@
+# 依赖
+node_modules/
+
+# 环境与配置(含敏感信息)
+.env
+.env.local
+config.json
+
+# 运行时数据
+data/
+logs/
+nohup.out
+*.log
+
+# 系统与编辑器
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Claude Code 本地配置（含个人偏好，不应提交）
+.claude/settings.local.json
+.claude/

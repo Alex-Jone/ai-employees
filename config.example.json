@@ -1,0 +1,154 @@
+{
+  "employees": [
+    {
+      "id": "backend",
+      "name": "Backend",
+      "cwd": "~/projects/example-backend",
+      "description": "后端开发专家,负责服务端核心逻辑与性能优化",
+      "color": "#E25A1C",
+      "avatar": "⚙️",
+      "skills": [
+        "API Design",
+        "Database",
+        "Concurrency",
+        "Caching",
+        "Observability"
+      ],
+      "category": "project",
+      "provider": "claude"
+    },
+    {
+      "id": "frontend",
+      "name": "Frontend",
+      "cwd": "~/projects/example-frontend",
+      "description": "前端开发专家,负责 UI 组件与交互实现",
+      "color": "#4CAF50",
+      "avatar": "🎨",
+      "skills": [
+        "React",
+        "TypeScript",
+        "State Management",
+        "Accessibility",
+        "Performance"
+      ],
+      "category": "project",
+      "provider": "claude"
+    },
+    {
+      "id": "devops",
+      "name": "DevOps",
+      "cwd": "~/projects/example-infra",
+      "description": "DevOps 专家,负责 CI/CD、基础设施与可观测性",
+      "color": "#2196F3",
+      "avatar": "🚀",
+      "skills": [
+        "Kubernetes",
+        "Terraform",
+        "CI/CD",
+        "Monitoring",
+        "SRE"
+      ],
+      "category": "project",
+      "provider": "claude"
+    },
+    {
+      "id": "code-reviewer",
+      "name": "CodeReviewer",
+      "cwd": "~/projects",
+      "description": "代码审查专家,负责跨项目代码质量把关与最佳实践推广",
+      "color": "#9C27B0",
+      "avatar": "🔍",
+      "skills": [
+        "Code Review",
+        "Security Audit",
+        "Performance Analysis",
+        "Best Practices",
+        "Clean Code"
+      ],
+      "personality": {
+        "tone": "strict",
+        "focusAreas": [
+          "安全性",
+          "性能",
+          "可读性",
+          "错误处理"
+        ],
+        "language": "zh-CN",
+        "reviewStyle": "line-by-line"
+      },
+      "cwdMode": "multi",
+      "cwdList": [
+        "~/projects/example-backend",
+        "~/projects/example-frontend",
+        "~/projects/example-infra"
+      ],
+      "category": "utility",
+      "provider": "claude"
+    },
+    {
+      "id": "architect",
+      "name": "Architect",
+      "cwd": "~/projects",
+      "description": "架构设计专家,负责系统整体架构规划与技术方案评审",
+      "color": "#3F51B5",
+      "avatar": "🏗️",
+      "skills": [
+        "System Design",
+        "Distributed Systems",
+        "API Design",
+        "Scalability",
+        "Tech Roadmap"
+      ],
+      "personality": {
+        "tone": "concise",
+        "focusAreas": [
+          "可扩展性",
+          "容错设计",
+          "数据一致性",
+          "系统边界"
+        ],
+        "language": "zh-CN",
+        "designFocus": [
+          "模块化",
+          "可演进架构"
+        ]
+      },
+      "cwdMode": "multi",
+      "cwdList": [
+        "~/projects/example-backend",
+        "~/projects/example-frontend",
+        "~/projects/example-infra"
+      ],
+      "category": "utility",
+      "provider": "claude"
+    },
+    {
+      "id": "metabase",
+      "name": "Metabase",
+      "cwd": "~/projects/example-metabase",
+      "description": "元数据查询专家,通过 MySQL 兼容协议连接数据仓库",
+      "color": "#FF6F61",
+      "avatar": "🔮",
+      "skills": [
+        "Metadata Query",
+        "Data Catalog",
+        "Data Lineage",
+        "Schema Management",
+        "Data Quality"
+      ],
+      "dbConnection": {
+        "host": "${METABASE_HOST}",
+        "port": "${METABASE_PORT}",
+        "user": "${METABASE_USER}",
+        "password": "${METABASE_PASSWORD}",
+        "database": "${METABASE_DB}"
+      },
+      "category": "utility",
+      "provider": "claude"
+    }
+  ],
+  "deepseek": {
+    "apiKey": "${DEEPSEEK_API_KEY}",
+    "baseUrl": "${DEEPSEEK_BASE_URL}"
+  }
+}
